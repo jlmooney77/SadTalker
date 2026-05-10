@@ -60,7 +60,7 @@ class CropAndExtract():
         self.lm3d_std = load_lm3d(sadtalker_path['dir_of_BFM_fitting'])
         self.device = device
     
-    def generate(self, input_path, save_dir, crop_or_resize='crop', source_image_flag=False, pic_size=256):
+    def generate(self, input_path, save_dir, crop_or_resize='crop', source_image_flag=False, pic_size=256, face_rect=None, preserve_full_avatar=False):
 
         pic_name = os.path.splitext(os.path.split(input_path)[-1])[0]  
 
@@ -91,24 +91,56 @@ class CropAndExtract():
 
         x_full_frames= [cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  for frame in full_frames] 
 
-        #### crop images as the 
-        if 'crop' in crop_or_resize.lower(): # default crop
-            x_full_frames, crop, quad = self.propress.crop(x_full_frames, still=True if 'ext' in crop_or_resize.lower() else False, xsize=512)
-            clx, cly, crx, cry = crop
-            lx, ly, rx, ry = quad
-            lx, ly, rx, ry = int(lx), int(ly), int(rx), int(ry)
-            oy1, oy2, ox1, ox2 = cly+ly, cly+ry, clx+lx, clx+rx
-            crop_info = ((ox2 - ox1, oy2 - oy1), crop, quad)
-        elif 'full' in crop_or_resize.lower():
-            x_full_frames, crop, quad = self.propress.crop(x_full_frames, still=True if 'ext' in crop_or_resize.lower() else False, xsize=512)
-            clx, cly, crx, cry = crop
-            lx, ly, rx, ry = quad
-            lx, ly, rx, ry = int(lx), int(ly), int(rx), int(ry)
-            oy1, oy2, ox1, ox2 = cly+ly, cly+ry, clx+lx, clx+rx
-            crop_info = ((ox2 - ox1, oy2 - oy1), crop, quad)
-        else: # resize mode
-            oy1, oy2, ox1, ox2 = 0, x_full_frames[0].shape[0], 0, x_full_frames[0].shape[1] 
+        #### If the caller asked to preserve the full avatar or provided an explicit face rect, handle here
+        img_h = x_full_frames[0].shape[0]
+        img_w = x_full_frames[0].shape[1]
+        if preserve_full_avatar:
+            oy1, oy2, ox1, ox2 = 0, img_h, 0, img_w
             crop_info = ((ox2 - ox1, oy2 - oy1), None, None)
+        elif face_rect is not None:
+            try:
+                parts = [int(p) for p in str(face_rect).split(',')]
+                if len(parts) == 4:
+                    fx, fy, fw, fh = parts
+                    margin = float(os.environ.get('TALKINGFACE_PATCH_RECT_MARGIN', 0.6))
+                    new_w = int(fw * (1.0 + margin))
+                    new_h = int(fh * (1.0 + margin))
+                    cx = fx + fw // 2
+                    cy = fy + fh // 2
+                    x0 = max(0, cx - new_w // 2)
+                    y0 = max(0, cy - new_h // 2)
+                    x1 = min(img_w, x0 + new_w)
+                    y1 = min(img_h, y0 + new_h)
+                    # Crop the full frames to the expanded rect
+                    for i in range(len(x_full_frames)):
+                        x_full_frames[i] = x_full_frames[i][y0:y1, x0:x1]
+                    oy1, oy2, ox1, ox2 = 0, y1 - y0, 0, x1 - x0
+                    crop_info = ((ox2 - ox1, oy2 - oy1), (x0, y0, x1, y1), None)
+                else:
+                    oy1, oy2, ox1, ox2 = 0, img_h, 0, img_w
+                    crop_info = ((ox2 - ox1, oy2 - oy1), None, None)
+            except Exception:
+                oy1, oy2, ox1, ox2 = 0, img_h, 0, img_w
+                crop_info = ((ox2 - ox1, oy2 - oy1), None, None)
+        else:
+            #### crop images as the 
+            if 'crop' in crop_or_resize.lower(): # default crop
+                x_full_frames, crop, quad = self.propress.crop(x_full_frames, still=True if 'ext' in crop_or_resize.lower() else False, xsize=512)
+                clx, cly, crx, cry = crop
+                lx, ly, rx, ry = quad
+                lx, ly, rx, ry = int(lx), int(ly), int(rx), int(ry)
+                oy1, oy2, ox1, ox2 = cly+ly, cly+ry, clx+lx, clx+rx
+                crop_info = ((ox2 - ox1, oy2 - oy1), crop, quad)
+            elif 'full' in crop_or_resize.lower():
+                x_full_frames, crop, quad = self.propress.crop(x_full_frames, still=True if 'ext' in crop_or_resize.lower() else False, xsize=512)
+                clx, cly, crx, cry = crop
+                lx, ly, rx, ry = quad
+                lx, ly, rx, ry = int(lx), int(ly), int(rx), int(ry)
+                oy1, oy2, ox1, ox2 = cly+ly, cly+ry, clx+lx, clx+rx
+                crop_info = ((ox2 - ox1, oy2 - oy1), crop, quad)
+            else: # resize mode
+                oy1, oy2, ox1, ox2 = 0, x_full_frames[0].shape[0], 0, x_full_frames[0].shape[1] 
+                crop_info = ((ox2 - ox1, oy2 - oy1), None, None)
 
         frames_pil = [Image.fromarray(cv2.resize(frame,(pic_size, pic_size))) for frame in x_full_frames]
         if len(frames_pil) == 0:

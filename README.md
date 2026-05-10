@@ -226,6 +226,16 @@ python inference.py --driven_audio <audio.wav> \
 ```
 The results will be saved in `results/$SOME_TIMESTAMP/*.mp4`.
 
+You can provide a guidance rectangle for the face (`x,y,w,h`) or force SadTalker to preserve the full avatar image:
+
+```bash
+# pass a face guidance rect (will be expanded internally by a margin):
+python inference.py --source_image avatar.png --driven_audio a.wav --face-rect 326,122,378,378
+
+# force preserve full avatar (equivalent to using a full-image rect):
+python inference.py --source_image avatar.png --driven_audio a.wav --preserve-full-avatar
+```
+
 ##### Full body/image Generation:
 
 Using `--still` to generate a natural full body video. You can add `enhancer` to improve the quality of the generated video. 

@@ -44,7 +44,7 @@ def main(args):
     os.makedirs(first_frame_dir, exist_ok=True)
     print('3DMM Extraction for source image')
     first_coeff_path, crop_pic_path, crop_info =  preprocess_model.generate(pic_path, first_frame_dir, args.preprocess,\
-                                                                             source_image_flag=True, pic_size=args.size)
+                                                                             source_image_flag=True, pic_size=args.size, face_rect=args.face_rect, preserve_full_avatar=args.preserve_full_avatar)
     if first_coeff_path is None:
         print("Can't get the coeffs of the input")
         return
@@ -116,6 +116,8 @@ if __name__ == '__main__':
     parser.add_argument("--face3dvis", action="store_true", help="generate 3d face and 3d landmarks") 
     parser.add_argument("--still", action="store_true", help="can crop back to the original videos for the full body aniamtion") 
     parser.add_argument("--preprocess", default='crop', choices=['crop', 'extcrop', 'resize', 'full', 'extfull'], help="how to preprocess the images" ) 
+    parser.add_argument("--face-rect", default=None, help="optional guidance rect for the face as x,y,w,h (guidance only)")
+    parser.add_argument("--preserve-full-avatar", action="store_true", help="when set, preserve the full avatar image (equivalent to passing full-image face rect)")
     parser.add_argument("--verbose",action="store_true", help="saving the intermedia output or not" ) 
     parser.add_argument("--old_version",action="store_true", help="use the pth other than safetensor version" ) 
 
