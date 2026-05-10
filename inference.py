@@ -1,3 +1,7 @@
+import warnings
+# Silence torchvision "pretrained" deprecation warnings coming from site packages
+warnings.filterwarnings("ignore", message=".*pretrained.*")
+
 from glob import glob
 import shutil
 import torch
